@@ -58,6 +58,10 @@ public:
    void *rambank1_ptr() const { return cart_.wramdata(0) + 0x1000; }
    void *rambank2_ptr() const { return cart_.wramdata(0) + 0x2000; }
    void *bankedram_ptr() const { return cart_.wramdata(1); }
+   // ff-bgm1x
+   unsigned char ffbgmIo(unsigned addr) const { return ioamhram_[addr - 0xFE00]; }
+   void ffbgmSetMuteMask(unsigned mask) { psg_.setFfbgmMuteMask(mask); }
+   void ffbgmSetGain(int ch, unsigned q8) { psg_.setFfbgmGain(ch, q8); }
    void *rombank0_ptr() const { return cart_.romdata(0); }
    void *rombank1_ptr() const { return cart_.romdata(0) + 0x4000; }
    void *zeropage_ptr() const { return (void*)(ioamhram_ + 0x0180); }
