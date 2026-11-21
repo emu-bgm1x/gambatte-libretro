@@ -510,6 +510,14 @@ void CPU::process(unsigned long const cycles) {
 
 			PC_READ(opcode);
 
+			if (ffbgmFetch) {
+				FfbgmRegs r;
+				r.a = a; r.f = toF(hf2, cf, zf); r.b = b; r.c = c; r.d = d; r.e = e; r.h = h; r.l = l;
+				r.sp = sp;
+				r.pc = (pc - 1) & 0xFFFF;
+				ffbgmFetch(r, opcode);
+			}
+
 			if (skip_) {
 				pc = (pc - 1) & 0xFFFF;
 				skip_ = false;

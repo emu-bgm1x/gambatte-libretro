@@ -52,6 +52,7 @@ static retro_audio_sample_batch_t audio_batch_cb;
 static retro_environment_t environ_cb;
 static gambatte::video_pixel_t* video_buf;
 static gambatte::GB gb;
+#include "ff_bgm1x_gb.h"  /* ff-bgm1x */
 
 static bool libretro_supports_option_categories = false;
 static bool libretro_supports_bitmasks          = false;
@@ -1737,6 +1738,7 @@ void retro_reset()
 #ifdef DUAL_MODE
    gb2.reset();
 #endif
+   ffbgm_gb_reset();  /* ff-bgm1x */
 
    if (sram)
    {
@@ -1775,6 +1777,7 @@ bool retro_unserialize(const void *data, size_t size)
       return false;
 
    gb.loadState(data);
+   ffbgm_gb_reset();  /* ff-bgm1x: 상태를 불러오면 숨겨진 코어를 새로 맞춘다 */
    return true;
 }
 
@@ -2112,8 +2115,31 @@ static void find_internal_palette(const unsigned short **palette, bool *is_gbc)
    internal_palette_active = true;
 }
 
+static void check_ffbgm_variables(void)
+{
+   /* ff-bgm1x: 프론트엔드가 ff_bgm1x_mix 를 불러 줄 때만 동작한다 */
+   struct retro_variable var;
+   bool enabled = true;
+   bool sfx1x = true;
+   int sfxVolume = 100;
+   var.key = "gambatte_ff_bgm1x";
+   var.value = 0;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      enabled = strcmp(var.value, "disabled") != 0;
+   var.key = "gambatte_ff_bgm1x_sfx";
+   var.value = 0;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      sfx1x = strcmp(var.value, "disabled") != 0;
+   var.key = "gambatte_ff_bgm1x_sfx_volume";
+   var.value = 0;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      sfxVolume = atoi(var.value);
+   ffbgm_gb_set_options(enabled, sfx1x, sfxVolume);
+}
+
 static void check_variables(bool startup)
 {
+   check_ffbgm_variables();
    unsigned i, j;
 
    unsigned colorCorrection = 0;
@@ -2580,6 +2606,7 @@ bool retro_load_game(const struct retro_game_info *info)
 
    if (gb.load(info->data, info->size, flags) != 0)
       return false;
+   ffbgm_gb_load(&gb, info->data, info->size);  /* ff-bgm1x */
 #ifdef DUAL_MODE
    if (gb2.load(info->data, info->size, flags) != 0)
       return false;
@@ -2649,6 +2676,7 @@ bool retro_load_game_special(unsigned, const struct retro_game_info*, size_t) { 
 
 void retro_unload_game()
 {
+   ffbgm_gb_unload();  /* ff-bgm1x */
    rom_loaded = false;
 }
 
@@ -2717,9 +2745,11 @@ void retro_run()
       int16_t i16[2 * SOUND_BUFF_SIZE];
    } static sound_buf;
    unsigned samples = SOUND_SAMPLES_PER_RUN;
+   unsigned long ffbgm_samples = 0;  /* ff-bgm1x: 이번 프레임에 코어가 낸 표본 수 */
 
    while (gb.runFor(video_buf, VIDEO_PITCH, sound_buf.u32, SOUND_BUFF_SIZE, samples) == -1)
    {
+      ffbgm_samples += samples;
       if (use_cc_resampler)
          CC_renderaudio((audio_frame_t*)sound_buf.u32, samples);
       else
@@ -2737,6 +2767,8 @@ void retro_run()
 #ifdef DUAL_MODE
    while (gb2.runFor(video_buf + GB_SCREEN_WIDTH, VIDEO_PITCH, sound_buf.u32, samples) == -1) {}
 #endif
+
+   ffbgm_gb_frame(ffbgm_samples + samples);  /* ff-bgm1x: 원본 곡·효과음 상태 읽기, 원본 채널 끄기 */
 
    /* Perform interframe blending, if required */
    if (blend_frames)

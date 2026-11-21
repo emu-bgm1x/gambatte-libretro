@@ -188,6 +188,57 @@ void *GB::vram_ptr() const {
  return p_->cpu.vram_ptr();
 }
 
+unsigned char GB::ffbgmRead(unsigned short addr) const {
+ if (addr >= 0xC000 && addr < 0xD000)
+  return static_cast<unsigned char *>(p_->cpu.rambank0_ptr())[addr - 0xC000];
+ if (addr >= 0xD000 && addr < 0xE000)
+  return static_cast<unsigned char *>(p_->cpu.bankedram_ptr())[addr - 0xD000];
+ if (addr >= 0xFF00)
+  return p_->cpu.mem_.ffbgmIo(addr);
+ return 0xFF;
+}
+
+unsigned char GB::ffbgmReadBank1(unsigned short addr) const {
+ if (addr >= 0xD000 && addr < 0xE000)
+  return static_cast<unsigned char *>(p_->cpu.rambank1_ptr())[addr - 0xD000];
+ return ffbgmRead(addr);
+}
+
+void (*ffbgmFetch)(FfbgmRegs const &regs, unsigned char opcode) = 0;
+void (*ffbgmIrq)(unsigned short returnPc, unsigned short sp, unsigned short vector) = 0;
+void (*ffbgmStore)(unsigned short address, unsigned char value) = 0;
+
+int GB::ffbgmRomBank() const {
+ return p_->cpu.mem_.ffbgmRomBank();
+}
+
+int GB::ffbgmWramBank() const {
+ int const bank = static_cast<int>((static_cast<unsigned char *>(p_->cpu.bankedram_ptr())
+                                   - static_cast<unsigned char *>(p_->cpu.rambank0_ptr())) / 0x1000);
+ return bank >= 1 && bank < 8 ? bank : 1;
+}
+
+void GB::ffbgmReadState(unsigned char *ram, unsigned char *io, int &romBank, int &wramBank) const {
+ unsigned char const *wram = static_cast<unsigned char *>(p_->cpu.rambank0_ptr());
+ std::memcpy(ram, wram, p_->cpu.isCgb() ? 0x8000 : 0x2000);
+ for (int i = 0; i < 0x80; ++i)
+  io[i] = p_->cpu.mem_.ffbgmIo(0xFF00 + i);
+ io[0x26] = p_->cpu.mem_.ffbgmNr52(); // channel status bits (which channels are playing)
+ io[0x4D] = p_->cpu.mem_.ffbgmDoubleSpeed() ? 0x80 : 0x00; // FF4D: only the real double-speed state (timer interval)
+ for (int i = 0; i < 0x80; ++i)
+  ram[0x8000 + i] = p_->cpu.mem_.ffbgmIo(0xFF80 + i);
+ romBank = ffbgmRomBank();
+ wramBank = ffbgmWramBank();
+}
+
+void GB::ffbgmSetMuteMask(unsigned mask) {
+ p_->cpu.mem_.ffbgmSetMuteMask(mask);
+}
+
+void GB::ffbgmSetChannelGain(int ch, unsigned q8) {
+ p_->cpu.mem_.ffbgmSetGain(ch, q8);
+}
+
 void *GB::rambank0_ptr() const {
  return p_->cpu.rambank0_ptr();
 }

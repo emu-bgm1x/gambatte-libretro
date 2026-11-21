@@ -25,6 +25,7 @@
 #include "sound.h"
 #include "tima.h"
 #include "video.h"
+#include "gambatte.h"  // ff-bgm1x: tracing hooks
 
 namespace gambatte {
 
@@ -58,6 +59,14 @@ public:
    void *rambank1_ptr() const { return cart_.wramdata(0) + 0x1000; }
    void *rambank2_ptr() const { return cart_.wramdata(0) + 0x2000; }
    void *bankedram_ptr() const { return cart_.wramdata(1); }
+   // ff-bgm1x
+   unsigned char ffbgmIo(unsigned addr) const { return ioamhram_[addr - 0xFE00]; }
+   bool ffbgmDoubleSpeed() const { return isDoubleSpeed(); }
+   // NR52 as the game would read it now (the stored byte only gets the channel status bits on a game read)
+   unsigned char ffbgmNr52() const { return (ioamhram_[0x126] & 0x80) ? 0xF0 | psg_.getStatus() : 0x70; }
+   int ffbgmRomBank() const { return static_cast<int>((cart_.rmem(4) + 0x4000 - cart_.romdata(0)) / 0x4000); }
+   void ffbgmSetMuteMask(unsigned mask) { psg_.setFfbgmMuteMask(mask); }
+   void ffbgmSetGain(int ch, unsigned q8) { psg_.setFfbgmGain(ch, q8); }
    void *rombank0_ptr() const { return cart_.romdata(0); }
    void *rombank1_ptr() const { return cart_.romdata(0) + 0x4000; }
    void *zeropage_ptr() const { return (void*)(ioamhram_ + 0x0180); }
@@ -96,6 +105,8 @@ public:
 	}
 
 	void write(unsigned p, unsigned data, unsigned long cc) {
+		if (ffbgmStore)
+			ffbgmStore(p, data);
 		if (cart_.wmem(p >> 12)) {
 			cart_.wmem(p >> 12)[p] = data;
 		} else
@@ -103,6 +114,8 @@ public:
 	}
 
 	void ff_write(unsigned p, unsigned data, unsigned long cc) {
+		if (ffbgmStore)
+			ffbgmStore(0xFF00 | p, data);
 		if (p - 0x80u < 0x7Fu) {
 			ioamhram_[p + 0x100] = data;
 		} else

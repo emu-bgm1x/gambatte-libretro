@@ -28,6 +28,12 @@
 #include <cstddef>
 
 namespace gambatte {
+
+// ff-bgm1x: sound driver tracing hooks (NULL = off): instruction fetch, interrupt entry, memory write
+struct FfbgmRegs { unsigned char a, f, b, c, d, e, h, l; unsigned short sp, pc; };
+extern void (*ffbgmFetch)(FfbgmRegs const &regs, unsigned char opcode);
+extern void (*ffbgmIrq)(unsigned short returnPc, unsigned short sp, unsigned short vector);
+extern void (*ffbgmStore)(unsigned short address, unsigned char value);
 #if defined(VIDEO_RGB565) || defined(VIDEO_ABGR1555)
 typedef uint16_t video_pixel_t;
 #else
@@ -136,6 +142,18 @@ public:
 #ifdef __LIBRETRO__
    void *vram_ptr() const;
    void *rambank0_ptr() const;
+   // ff-bgm1x: 부작용 없이 읽기 (C000~DFFF 와 FF00~FFFF 만). Bank1 은 D000~DFFF 를 WRAM 뱅크 1 에서 읽는다
+   unsigned char ffbgmRead(unsigned short addr) const;
+   unsigned char ffbgmReadBank1(unsigned short addr) const;
+   // ff-bgm1x: 비트 i = 채널 i+1 을 출력에서 끈다
+   void ffbgmSetMuteMask(unsigned mask);
+   // ff-bgm1x: 채널 ch(0~3) 의 출력 볼륨 (256 = 그대로)
+   void ffbgmSetChannelGain(int ch, unsigned q8);
+   // ff-bgm1x: state for the generic sound driver mode. ram: 0x8080 bytes (WRAM banks in order, 0x1000 each, then
+   // HRAM FF80-FFFE and IE), io: FF00-FF7F. Returns the current ROM bank and WRAM bank
+   void ffbgmReadState(unsigned char *ram, unsigned char *io, int &romBank, int &wramBank) const;
+   int ffbgmRomBank() const;
+   int ffbgmWramBank() const;
    void *rambank1_ptr() const;
    void *rambank2_ptr() const;
    void *bankedram_ptr() const;

@@ -29,12 +29,15 @@ Interrupter::Interrupter(unsigned short &sp, unsigned short &pc)
 
 unsigned long Interrupter::interrupt(unsigned const address, unsigned long cc, Memory &memory) {
 	cc += 8;
+	unsigned short const ffbgmRet = pc_;
 	sp_ = (sp_ - 1) & 0xFFFF;
 	memory.write(sp_, pc_ >> 8, cc);
 	cc += 4;
 	sp_ = (sp_ - 1) & 0xFFFF;
 	memory.write(sp_, pc_ & 0xFF, cc);
 	pc_ = address;
+	if (ffbgmIrq)
+		ffbgmIrq(ffbgmRet, sp_, address);
 	cc += 8;
 
 	if (address == 0x40 && !gsCodes_.empty())

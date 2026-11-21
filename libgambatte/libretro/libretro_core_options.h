@@ -604,6 +604,58 @@ struct retro_core_option_v2_definition option_defs_us[] = {
       },
       "0"
    },
+   /* ff-bgm1x: 프론트엔드가 ff_bgm1x_mix 를 불러 줄 때만 동작한다 */
+   {
+      "gambatte_ff_bgm1x",
+      "BGM at 1x Speed (Fast Forward)",
+      NULL,
+      "Keeps background music at normal speed while fast forwarding (2nd-generation GB sound engine). Requires a frontend that calls ff_bgm1x_mix.",
+      NULL,
+      NULL,
+      {
+         { "enabled",  NULL },
+         { "disabled", NULL },
+         { NULL, NULL },
+      },
+      "enabled"
+   },
+   {
+      "gambatte_ff_bgm1x_sfx",
+      "Sound Effects at 1x Speed",
+      NULL,
+      "Also plays sound effects at normal speed while fast forwarding.",
+      NULL,
+      NULL,
+      {
+         { "enabled",  NULL },
+         { "disabled", NULL },
+         { NULL, NULL },
+      },
+      "enabled"
+   },
+   {
+      "gambatte_ff_bgm1x_sfx_volume",
+      "1x Sound Effect Volume",
+      NULL,
+      "Volume of the sound effects played at normal speed (percent).",
+      NULL,
+      NULL,
+      {
+         { "100", NULL },
+         { "0", NULL },
+         { "10", NULL },
+         { "20", NULL },
+         { "30", NULL },
+         { "40", NULL },
+         { "50", NULL },
+         { "60", NULL },
+         { "70", NULL },
+         { "80", NULL },
+         { "90", NULL },
+         { NULL, NULL },
+      },
+      "100"
+   },
    {
       "gambatte_mix_frames",
       "Interframe Blending",
